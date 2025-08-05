@@ -1,23 +1,43 @@
 import javax.sound.midi.*;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.OutputStream;
+import java.net.Socket;
+import java.net.UnknownHostException;
 
 import static javax.sound.midi.ShortMessage.NOTE_OFF;
 import static javax.sound.midi.ShortMessage.NOTE_ON;
 
 
 public class MidiProject {
-    public static void main(String args[]) {
+    private static String path = "./midis/";
+    private static int port = 5000;
+
+    public static void main(String args[]) throws UnknownHostException, IOException {
         try {
+            // open socket to pass data to python script
+            Socket client = new Socket("localhost", port);
+
+            // get output stream to pass data
+            OutputStream out = client.getOutputStream();
+
+            // get synthesizer to play music
             Synthesizer synthesizer = MidiSystem.getSynthesizer();
             synthesizer.open();
+
+            // get sequencer to read file
             Sequencer sequencer = MidiSystem.getSequencer(false);
-            sequencer.getTransmitter().setReceiver(new NoteReceiver());
+
+            // add note receiver and synthesizer to get notes from sequence
+            sequencer.getTransmitter().setReceiver(new NoteReceiver(out));
             sequencer.getTransmitter().setReceiver(synthesizer.getReceiver());
             sequencer.open();
-            sequencer.setSequence(new FileInputStream("repeat test.mid"));
+
+            // choose midi file and play song
+            sequencer.setSequence(new FileInputStream(path + "kuronuri_sekaiate_shokan.mid"));
             sequencer.start();
 
+            // loop until midi file is completely read
             while (sequencer.isRunning()) {
                 try {
                     Thread.sleep(1000);
@@ -27,6 +47,7 @@ public class MidiProject {
                 }
             }
 
+            client.close();
             sequencer.close();
             synthesizer.close();
         } catch (InvalidMidiDataException e) {
@@ -40,24 +61,42 @@ public class MidiProject {
 }
 
 class NoteReceiver implements Receiver {
+    OutputStream output;
+
+    public NoteReceiver(OutputStream output) {
+        this.output = output;
+    }
+
     @Override
     public void send(MidiMessage message, long timeStamp) {
         if (message instanceof ShortMessage) {
             ShortMessage sm = (ShortMessage) message;
-            int channel = sm.getChannel();
 
             if (sm.getCommand() == NOTE_ON) {
                 int key = sm.getData1();
-                int velocity = sm.getData2();
-                Note note = new Note(key);
-                System.out.println(System.currentTimeMillis() + " " + note + " ON");
+                //Note note = new Note(key);
+
+                try {
+                    output.write((key + "\n" + "on" + "\n").getBytes());
+                    output.flush();
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+                //System.out.println(System.currentTimeMillis() + " " + note + " ON");
                 // press note
 
             } else if (sm.getCommand() == NOTE_OFF) {
                 int key = sm.getData1();
-                int velocity = sm.getData2();
-                Note note = new Note(key);
-                System.out.println(System.currentTimeMillis() + " " + note + " OFF");
+                //Note note = new Note(key);
+
+                try {
+                    output.write((key + "\n" + "off" + "\n").getBytes());
+                    output.flush();
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+
+                //System.out.println(System.currentTimeMillis() + " " + note + " OFF");
                 // release note
             } else {
                 //System.out.println("Command:" + sm.getCommand());
