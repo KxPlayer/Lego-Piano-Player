@@ -77,7 +77,7 @@ class NoteReceiver implements Receiver {
                 //Note note = new Note(key);
 
                 try {
-                    output.write((key + "\n" + "on" + "\n").getBytes());
+                    output.write((key + "\n").getBytes());
                     output.flush();
                 } catch (IOException e) {
                     throw new RuntimeException(e);
@@ -90,7 +90,7 @@ class NoteReceiver implements Receiver {
                 //Note note = new Note(key);
 
                 try {
-                    output.write((key + "\n" + "off" + "\n").getBytes());
+                    output.write(("-" + key + "\n").getBytes());
                     output.flush();
                 } catch (IOException e) {
                     throw new RuntimeException(e);

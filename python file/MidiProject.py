@@ -14,6 +14,17 @@ while True:
     data = conn.recv(1024)
     if not data:
         break
-    print("Received:", data.decode().strip())
+    values = [int(value) for value in data.decode().split("\n") if value]
+    print("Received:", values)
 
+# to do:
+'''
+initialize all motors w/ motor objects
+each motor has:
+designated value -> check if received value is relevant (absolute value)
+receive function
+key press counter
+up function -> choose angle to reset to
+down function -> choose angle to press down
+'''
 conn.close()
