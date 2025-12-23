@@ -16,12 +16,14 @@ public class MidiProject {
     public static void main(String args[]) throws UnknownHostException, IOException {
         try {
             // open socket to pass data to python script
+            // python script must be run first
             Socket client = new Socket("localhost", port);
 
             // get output stream to pass data
             OutputStream out = client.getOutputStream();
 
             // need to add some sort of wait here to confirm that the listener is ready (bluetooth is connected)
+            // wait for response from python script to confirm, then start
 
             // get synthesizer to play music
             Synthesizer synthesizer = MidiSystem.getSynthesizer();
