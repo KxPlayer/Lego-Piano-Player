@@ -15,6 +15,9 @@ while True:
     if not data:
         break
     values = [int(value) for value in data.decode().split("\n") if value]
+
+
+
     print("Received:", values)
 
 # to do:

@@ -21,6 +21,8 @@ public class MidiProject {
             // get output stream to pass data
             OutputStream out = client.getOutputStream();
 
+            // need to add some sort of wait here to confirm that the listener is ready (bluetooth is connected)
+
             // get synthesizer to play music
             Synthesizer synthesizer = MidiSystem.getSynthesizer();
             synthesizer.open();
@@ -34,7 +36,7 @@ public class MidiProject {
             sequencer.open();
 
             // choose midi file and play song
-            sequencer.setSequence(new FileInputStream(path + "kuronuri_sekaiate_shokan.mid"));
+            sequencer.setSequence(new FileInputStream(path + "test file.mid"));
             sequencer.start();
 
             // loop until midi file is completely read
