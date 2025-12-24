@@ -6,8 +6,8 @@ from bleak import BleakScanner, BleakClient
 PYBRICKS_COMMAND_EVENT_CHAR_UUID = "c5f50002-8280-46da-89f4-6d8051e4aeef"
 HOST = 'localhost'
 PORT = 5000
-HUBS = ["Technic Hub 1", "Technic Hub 2"]
-CLIENTS = set()
+#HUBS = ["Technic Hub 1", "Technic Hub 2"]
+HUBS = ["Technic Hub 1"]
 
 
 # set up connection to hubs
@@ -18,17 +18,7 @@ async def connect_hub(name, lock):
         if not main_task.done():
             main_task.cancel()
 
-    def handle_rx(_, data: bytearray):
-        if data[0] == 0x01:  # "write stdout" event (0x01)
-            payload = data[1:]
-
-            if payload == b"rdy":
-                ready_event.set()
-            else:
-                print("Received:", payload)
-
     main_task = asyncio.current_task()
-    ready_event = asyncio.Event()
 
     async with lock:
         # Scan for hub and connect
@@ -40,25 +30,71 @@ async def connect_hub(name, lock):
 
         print('found hub', name)
 
-        await BleakClient(device, handle_disconnect).connect()
+        client = BleakClient(device, handle_disconnect)
 
-        return device
+        await client.connect()
+
+        return client
+
+
+async def send_data(client):
+
+    def handle_rx(_, data: bytearray):
+        if data[0] == 0x01:  # "write stdout" event (0x01)
+            payload = data[1:]
+
+            if payload == b"rdy":
+                ready_event.set()
+            else:
+                print("Received:", payload)
+
+    ready_event = asyncio.Event()
+
+    # Subscribe to notifications from the hub.
+    await client.start_notify(PYBRICKS_COMMAND_EVENT_CHAR_UUID, handle_rx)
+
+    async def send(data):
+        # Wait for hub to say that it is ready to receive data.
+        await ready_event.wait()
+        # Prepare for the next ready event.
+        ready_event.clear()
+        # Send the data to the hub.
+        await client.write_gatt_char(
+            PYBRICKS_COMMAND_EVENT_CHAR_UUID,
+            b"\x06" + data,  # prepend "write stdin" command (0x06)
+            response=True
+        )
+
+    # Tell user to start program on the hub.
+    #
+    print("Start the program on the hub now with the button.")
+
+    passing_list = [-1, 1, -1, 1]
+
+    # Send a few messages to the hub.
+    for i in passing_list:
+        await send(i.to_bytes(signed=True))
+        await asyncio.sleep(1)
+
+    # Send a message to indicate stop.
+    await send((0).to_bytes())
 
 
 async def main():
     lock = asyncio.Lock()
 
-    results = await asyncio.gather(
+    return await asyncio.gather(
         *(
             connect_hub(hub, lock)
             for hub in HUBS
         )
     )
 
-    print(results)
-
 with suppress(asyncio.CancelledError):
-    asyncio.run(main())
+    CLIENTS = asyncio.run(main())
+
+    for client in CLIENTS:
+        asyncio.run(send_data(client))
 
 '''# set up server
 server = socket.socket()
