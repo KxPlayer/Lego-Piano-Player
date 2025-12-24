@@ -6,12 +6,12 @@ from bleak import BleakScanner, BleakClient
 PYBRICKS_COMMAND_EVENT_CHAR_UUID = "c5f50002-8280-46da-89f4-6d8051e4aeef"
 HOST = 'localhost'
 PORT = 5000
-HUBS = ["Technic Hub 1"]
+HUBS = ["Technic Hub 1", "Technic Hub 2"]
 CLIENTS = set()
 
 
 # set up connection to hubs
-async def connect_hub(name):
+async def connect_hub(name, lock):
     def handle_disconnect(_):
         print("Hub was disconnected.")
 
@@ -30,23 +30,35 @@ async def connect_hub(name):
     main_task = asyncio.current_task()
     ready_event = asyncio.Event()
 
-    # Scan for hub and connect
-    device = await BleakScanner.find_device_by_name(name)
+    async with lock:
+        # Scan for hub and connect
+        device = await BleakScanner.find_device_by_name(name)
 
-    if device is None:
-        print(f"could not find hub with name: {name}")
-        return
+        if device is None:
+            print(f"could not find hub with name: {name}")
+            return None
 
-    print('found hub', name)
-    return BleakClient(device, handle_disconnect)
+        print('found hub', name)
 
-# set up hubs
-for hub_name in HUBS:
-    with suppress(asyncio.CancelledError):
-        client = asyncio.run(connect_hub(hub_name))
-        CLIENTS.add(client)
+        await BleakClient(device, handle_disconnect).connect()
 
-print(CLIENTS)
+        return device
+
+
+async def main():
+    lock = asyncio.Lock()
+
+    results = await asyncio.gather(
+        *(
+            connect_hub(hub, lock)
+            for hub in HUBS
+        )
+    )
+
+    print(results)
+
+with suppress(asyncio.CancelledError):
+    asyncio.run(main())
 
 '''# set up server
 server = socket.socket()
