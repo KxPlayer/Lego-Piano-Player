@@ -69,17 +69,7 @@ async def send_data(client, queue):
 
     # Tell user to start program on the hub.
     #
-    print("Start the program on the hub now with the button.")
-
-
-    # Send a few messages to the hub.
-    #    await send(i.to_bytes(signed=True))
-    #    await asyncio.sleep(1)
-
-    # Send a message to indicate stop.
-    #await send((0).to_bytes())
-
-    print('about to loop')
+    print("Press button on hub to start loop")
 
     while True:
         if len(queue) > 0:
@@ -91,7 +81,6 @@ async def send_data(client, queue):
                 #print("is int")
                 await send(queue[0].to_bytes(signed=True))
 
-            await asyncio.sleep(1)
             del queue[0]
 
 
@@ -114,31 +103,25 @@ with suppress(asyncio.CancelledError):
         thread = threading.Thread(target=asyncio.run, args=(send_data(client, new_queue),))
         thread.start()
 
-    passing_list = [-1, 1, -1, 1, 0]
+    # set up server
+    server = socket.socket()
+    server.bind((HOST, PORT))
+    server.listen(1)
+    print("Start MIDI reader script (should be done after hubs have buttons pressed")
 
-    for a in passing_list:
+    conn, addr = server.accept()
+    print("Connected by", addr)
+
+    while True:
+        # reads from socket
+        data = conn.recv(1024)
+        if not data:
+            break
+        values = [int(value) for value in data.decode().split("\n") if value]
         for q in QUEUES:
-            q.append(a)
+            q.append(values)
 
+        print("Received:", values)
 
-
-'''# set up server
-server = socket.socket()
-server.bind((HOST, PORT))
-server.listen(1)
-print("Waiting for connection...")
-conn, addr = server.accept()
-print("Connected by", addr)
-
-# loop
-while True:
-    # reads from socket
-    data = conn.recv(1024)
-    if not data:
-        break
-    values = [int(value) for value in data.decode().split("\n") if value]
-
-    print("Received:", values)
 
 conn.close()
-'''

@@ -33,7 +33,8 @@ public class MidiProject {
             Sequencer sequencer = MidiSystem.getSequencer(false);
 
             // add note receiver and synthesizer to get notes from sequence
-            sequencer.getTransmitter().setReceiver(new NoteReceiver(out));
+            NoteReceiver noteReceiver = new NoteReceiver(out);
+            sequencer.getTransmitter().setReceiver(noteReceiver);
             sequencer.getTransmitter().setReceiver(synthesizer.getReceiver());
             sequencer.open();
 
@@ -50,7 +51,8 @@ public class MidiProject {
                     break;
                 }
             }
-
+            
+            noteReceiver.close();
             client.close();
             sequencer.close();
             synthesizer.close();
@@ -110,7 +112,12 @@ class NoteReceiver implements Receiver {
 
     @Override
     public void close() {
-
+        try {
+            output.write((0 + "\n").getBytes());
+            output.flush();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 }
 
