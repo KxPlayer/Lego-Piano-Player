@@ -1,4 +1,5 @@
 import socket, asyncio
+import threading
 from contextlib import suppress
 from bleak import BleakScanner, BleakClient
 
@@ -8,6 +9,7 @@ HOST = 'localhost'
 PORT = 5000
 #HUBS = ["Technic Hub 1", "Technic Hub 2"]
 HUBS = ["Technic Hub 1"]
+QUEUES = []
 
 
 # set up connection to hubs
@@ -37,7 +39,7 @@ async def connect_hub(name, lock):
         return client
 
 
-async def send_data(client):
+async def send_data(client, queue):
 
     def handle_rx(_, data: bytearray):
         if data[0] == 0x01:  # "write stdout" event (0x01)
@@ -67,17 +69,19 @@ async def send_data(client):
 
     # Tell user to start program on the hub.
     #
-    print("Start the program on the hub now with the button.")
+    print("Press button on hub to start loop")
 
-    passing_list = [-1, 1, -1, 1]
+    while True:
+        if len(queue) > 0:
+            if isinstance(queue[0], list):
+                for a in queue[0]:
+                    #print("is list")
+                    await send(a.to_bytes(signed=True))
+            else:
+                #print("is int")
+                await send(queue[0].to_bytes(signed=True))
 
-    # Send a few messages to the hub.
-    for i in passing_list:
-        await send(i.to_bytes(signed=True))
-        await asyncio.sleep(1)
-
-    # Send a message to indicate stop.
-    await send((0).to_bytes())
+            del queue[0]
 
 
 async def main():
@@ -94,25 +98,30 @@ with suppress(asyncio.CancelledError):
     CLIENTS = asyncio.run(main())
 
     for client in CLIENTS:
-        asyncio.run(send_data(client))
+        new_queue = []
+        QUEUES.append(new_queue)
+        thread = threading.Thread(target=asyncio.run, args=(send_data(client, new_queue),))
+        thread.start()
 
-'''# set up server
-server = socket.socket()
-server.bind((HOST, PORT))
-server.listen(1)
-print("Waiting for connection...")
-conn, addr = server.accept()
-print("Connected by", addr)
+    # set up server
+    server = socket.socket()
+    server.bind((HOST, PORT))
+    server.listen(1)
+    print("Start MIDI reader script (should be done after hubs have buttons pressed")
 
-# loop
-while True:
-    # reads from socket
-    data = conn.recv(1024)
-    if not data:
-        break
-    values = [int(value) for value in data.decode().split("\n") if value]
+    conn, addr = server.accept()
+    print("Connected by", addr)
 
-    print("Received:", values)
+    while True:
+        # reads from socket
+        data = conn.recv(1024)
+        if not data:
+            break
+        values = [int(value) for value in data.decode().split("\n") if value]
+        for q in QUEUES:
+            q.append(values)
+
+        print("Received:", values)
+
 
 conn.close()
-'''
