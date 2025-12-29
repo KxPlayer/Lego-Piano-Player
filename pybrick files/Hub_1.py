@@ -36,5 +36,4 @@ while True:
     elif val == 0:
         # Stops everything
         break
-    else:
-        # Ignores all other values
+    # Ignores all other values if nothing found

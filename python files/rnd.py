@@ -20,6 +20,8 @@ async def connect_hub(name, lock):
         if not main_task.done():
             main_task.cancel()
 
+    print("Searching for", name)
+
     main_task = asyncio.current_task()
 
     async with lock:
@@ -51,6 +53,10 @@ async def send_data(client, queue):
                 print("Received:", payload)
 
     ready_event = asyncio.Event()
+
+    if client is None:
+        print("Client not found")
+        return
 
     # Subscribe to notifications from the hub.
     await client.start_notify(PYBRICKS_COMMAND_EVENT_CHAR_UUID, handle_rx)
@@ -98,6 +104,9 @@ with suppress(asyncio.CancelledError):
     CLIENTS = asyncio.run(main())
 
     for client in CLIENTS:
+        if client is None:
+            break
+
         new_queue = []
         QUEUES.append(new_queue)
         thread = threading.Thread(target=asyncio.run, args=(send_data(client, new_queue),))
@@ -107,7 +116,7 @@ with suppress(asyncio.CancelledError):
     server = socket.socket()
     server.bind((HOST, PORT))
     server.listen(1)
-    print("Start MIDI reader script (should be done after hubs have buttons pressed")
+    print("Start MIDI reader script (should be done after hubs have buttons pressed)")
 
     conn, addr = server.accept()
     print("Connected by", addr)
